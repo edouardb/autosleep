@@ -1,0 +1,47 @@
+name: Manage Koyeb Services on Office Hours
+
+on:
+  workflow_dispatch: # Add this line for manual testing
+
+  schedule:
+    # Runs at 9:00 AM UTC
+    - cron: "12 22 * * 1-5"
+    # Runs at 6:00 PM UTC
+    - cron: "15 22 * * 1-5"
+
+jobs:
+  manage-services:
+    runs-on: ubuntu-latest
+    env:
+      APP_NAME: "your_koyeb_app_name" # Replace with your instance ID
+
+    steps:
+      - name: Install and configure the Koyeb CLI
+        uses: koyeb-community/koyeb-actions@v2
+        with:
+          api_token: "${{ secrets.KOYEB_TOKEN }}"
+
+      - name: Determine Action Based on Time
+        id: time_check
+        run: |
+          hour=$(date +'%H')
+          if [ "$hour" -eq 22 ] && [ "$minute" -eq 12 ]; then
+            echo "action=stop"
+          elif [ "$hour" -eq 22 ] && [ "$minute" -eq 15 ]; then
+            echo "action=start"
+          else
+            echo "error=Invalid schedule time"
+            exit 1
+          fi
+
+      - name: Resume All Koyeb Services of an App (if scheduled to start)
+        if: steps.time_check.outputs.action == 'start'
+        run: |
+          koyeb app resume $APP_NAME
+          echo "All $APP_NAME services resumed."
+
+      - name: Pause All Koyeb Service on an App (if scheduled to stop)
+        if: steps.time_check.outputs.action == 'stop'
+        run: |
+          koyeb app pause $APP_NAME
+          echo "All $APP_NAME services paused."
